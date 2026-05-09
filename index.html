@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGO Beneficiary Verification & Fund Management Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo-section">
+                <h1>NGO Beneficiary Portal</h1>
+                <p>Verified Beneficiary Management System</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat">
+                    <span class="stat-value" id="totalBeneficiaries">0</span>
+                    <span class="stat-label">Beneficiaries</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="totalFunded">0</span>
+                    <span class="stat-label">Funded</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="totalDuplicates">0</span>
+                    <span class="stat-label">Duplicates Blocked</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container main-content">
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="register">Register Beneficiary</button>
+            <button class="tab-btn" data-tab="bulk-upload">Bulk Upload</button>
+            <button class="tab-btn" data-tab="beneficiaries">All Beneficiaries</button>
+            <button class="tab-btn" data-tab="analytics">Analytics</button>
+        </div>
+
+        <!-- Tab 1: Register Beneficiary -->
+        <div id="register" class="tab-content active">
+            <div class="form-section">
+                <h2>Register New Beneficiary</h2>
+                
+                <!-- Duplicate Check Alert -->
+                <div id="duplicateAlert" class="alert alert-danger hidden">
+                    <h4>⚠️ Duplicate Found</h4>
+                    <div id="duplicateDetails"></div>
+                    <button class="btn-sm" onclick="clearDuplicateAlert()">Dismiss</button>
+                </div>
+
+                <form id="beneficiaryForm" class="form-grid">
+                    <!-- Personal Information -->
+                    <fieldset class="form-fieldset">
+                        <legend>Personal Information</legend>
+                        
+                        <div class="form-group">
+                            <label for="fullName">Full Name *</label>
+                            <input type="text" id="fullName" name="fullName" required>
+                            <small>As per official documents</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nicNumber">NIC / ID Number *</label>
+                            <input type="text" id="nicNumber" name="nicNumber" required>
+                            <small>National ID or Passport Number</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mobileNumber">Mobile Number *</label>
+                            <input type="tel" id="mobileNumber" name="mobileNumber" required>
+                            <small>Format: +94-XXXXXXXXX</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dateOfBirth">Date of Birth *</label>
+                            <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="photo">Photo Upload *</label>
+                            <input type="file" id="photo" name="photo" accept="image/*" required>
+                            <small>JPG, PNG (Max 2MB)</small>
+                        </div>
+                    </fieldset>
+
+                    <!-- Address Information -->
+                    <fieldset class="form-fieldset">
+                        <legend>Address Information</legend>
+                        
+                        <div class="form-group">
+                            <label for="address">Full Address *</label>
+                            <textarea id="address" name="address" rows="3" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="gramaNeladhari">Grama Niladhari Division *</label>
+                            <input type="text" id="gramaNeladhari" name="gramaNeladhari" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="district">District *</label>
+                            <input type="text" id="district" name="district" required>
+                        </div>
+                    </fieldset>
+
+                    <!-- Bank Details -->
+                    <fieldset class="form-fieldset">
+                        <legend>Bank Details</legend>
+                        
+                        <div class="form-group">
+                            <label for="bankName">Bank Name</label>
+                            <input type="text" id="bankName" name="bankName">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="accountNumber">Account Number</label>
+                            <input type="text" id="accountNumber" name="accountNumber">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="accountHolder">Account Holder Name</label>
+                            <input type="text" id="accountHolder" name="accountHolder">
+                        </div>
+                    </fieldset>
+
+                    <!-- Family Details -->
+                    <fieldset class="form-fieldset">
+                        <legend>Family Information</legend>
+                        
+                        <div class="form-group">
+                            <label for="familyMembers">Number of Family Members</label>
+                            <input type="number" id="familyMembers" name="familyMembers" min="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dependents">Number of Dependents</label>
+                            <input type="number" id="dependents" name="dependents" min="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emergencyContact">Emergency Contact Name</label>
+                            <input type="text" id="emergencyContact" name="emergencyContact">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emergencyPhone">Emergency Contact Phone</label>
+                            <input type="tel" id="emergencyPhone" name="emergencyPhone">
+                        </div>
+                    </fieldset>
+
+                    <!-- Fund Category -->
+                    <fieldset class="form-fieldset">
+                        <legend>Fund Category</legend>
+                        
+                        <div class="form-group">
+                            <label for="category">Select Category *</label>
+                            <select id="category" name="category" required>
+                                <option value="">-- Select Category --</option>
+                                <option value="Education">Education Support</option>
+                                <option value="Medical">Medical Support</option>
+                                <option value="Food">Food Support</option>
+                                <option value="Housing">Housing Support</option>
+                                <option value="Orphan">Orphan Support</option>
+                                <option value="Widow">Widow Support</option>
+                                <option value="Emergency">Emergency Support</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fundAmount">Fund Amount Requested *</label>
+                            <input type="number" id="fundAmount" name="fundAmount" required min="0" step="0.01">
+                        </div>
+                    </fieldset>
+
+                    <!-- Documents -->
+                    <fieldset class="form-fieldset full-width">
+                        <legend>Supporting Documents</legend>
+                        
+                        <div class="document-upload-grid">
+                            <div class="doc-upload">
+                                <label>NIC Copy</label>
+                                <input type="file" name="nicCopy" accept="image/*,.pdf">
+                            </div>
+                            <div class="doc-upload">
+                                <label>Income Certificate</label>
+                                <input type="file" name="incomeCert" accept="image/*,.pdf">
+                            </div>
+                            <div class="doc-upload">
+                                <label>Medical Report (if applicable)</label>
+                                <input type="file" name="medicalReport" accept="image/*,.pdf">
+                            </div>
+                            <div class="doc-upload">
+                                <label>Bank Passbook</label>
+                                <input type="file" name="bankPassbook" accept="image/*,.pdf">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions full-width">
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tab 2: Bulk Upload -->
+        <div id="bulk-upload" class="tab-content">
+            <div class="upload-section">
+                <h2>Bulk Upload Beneficiaries</h2>
+                
+                <div class="upload-info">
+                    <h3>📋 Upload Excel File</h3>
+                    <p>Download the template, fill in your data, and upload to import multiple beneficiaries at once.</p>
+                    
+                    <div class="upload-actions">
+                        <button class="btn btn-info" onclick="downloadTemplate()">📥 Download Excel Template</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('excelFile').click()">📤 Upload Excel File</button>
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none;">
+                    </div>
+                </div>
+
+                <!-- Upload Progress -->
+                <div id="uploadProgress" class="upload-progress hidden">
+                    <h4>Processing...</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText">0%</p>
+                </div>
+
+                <!-- Upload Results -->
+                <div id="uploadResults" class="upload-results hidden">
+                    <h3>Upload Results</h3>
+                    
+                    <div class="results-summary">
+                        <div class="result-stat success">
+                            <span class="result-number" id="successCount">0</span>
+                            <span class="result-label">Successfully Imported</span>
+                        </div>
+                        <div class="result-stat warning">
+                            <span class="result-number" id="duplicateCount">0</span>
+                            <span class="result-label">Duplicates Found</span>
+                        </div>
+                        <div class="result-stat error">
+                            <span class="result-number" id="errorCount">0</span>
+                            <span class="result-label">Errors</span>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Results -->
+                    <div id="resultsTable" class="results-table-container"></div>
+
+                    <button class="btn btn-primary" onclick="resetUpload()">Upload Another File</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: All Beneficiaries -->
+        <div id="beneficiaries" class="tab-content">
+            <div class="beneficiaries-section">
+                <h2>All Beneficiaries</h2>
+                
+                <div class="search-filter">
+                    <input type="text" id="searchInput" placeholder="Search by Name, NIC, or Mobile Number..." class="search-box">
+                    
+                    <div class="filter-group">
+                        <select id="filterCategory">
+                            <option value="">All Categories</option>
+                            <option value="Education">Education Support</option>
+                            <option value="Medical">Medical Support</option>
+                            <option value="Food">Food Support</option>
+                            <option value="Housing">Housing Support</option>
+                            <option value="Orphan">Orphan Support</option>
+                            <option value="Widow">Widow Support</option>
+                            <option value="Emergency">Emergency Support</option>
+                        </select>
+
+                        <select id="filterStatus">
+                            <option value="">All Status</option>
+                            <option value="Pending">Pending Verification</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Funded">Funded</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Beneficiaries Table -->
+                <div class="table-container">
+                    <table id="beneficiariesTable" class="beneficiaries-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>NIC</th>
+                                <th>Mobile</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state hidden">
+                    <p>No beneficiaries found. Start by registering a new beneficiary or uploading a bulk file.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Analytics -->
+        <div id="analytics" class="tab-content">
+            <div class="analytics-section">
+                <h2>Portal Analytics</h2>
+                
+                <div class="analytics-grid">
+                    <!-- Category Distribution -->
+                    <div class="analytics-card">
+                        <h3>Beneficiaries by Category</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+
+                    <!-- Status Distribution -->
+                    <div class="analytics-card">
+                        <h3>Status Distribution</h3>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="analytics-card full-width">
+                        <h3>Summary Statistics</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsTotal">0</span>
+                                <span class="stat-name">Total Beneficiaries</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsPending">0</span>
+                                <span class="stat-name">Pending Verification</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsApproved">0</span>
+                                <span class="stat-name">Approved</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsFunded">0</span>
+                                <span class="stat-name">Funded</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsRejected">0</span>
+                                <span class="stat-name">Rejected</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsDuplicate">0</span>
+                                <span class="stat-name">Duplicates Blocked</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsTotalFunds">₨0</span>
+                                <span class="stat-name">Total Funds Distributed</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="analyticsPendingFunds">₨0</span>
+                                <span class="stat-name">Pending Funds</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Details Breakdown -->
+                    <div class="analytics-card full-width">
+                        <h3>Category-wise Breakdown</h3>
+                        <div id="categoryBreakdownTable" class="category-breakdown-table"></div>
+                    </div>
+
+                    <!-- Top Requested Categories -->
+                    <div class="analytics-card">
+                        <h3>Most Requested Categories</h3>
+                        <div id="topCategories"></div>
+                    </div>
+
+                    <!-- Fund Status Breakdown -->
+                    <div class="analytics-card">
+                        <h3>Fund Status Overview</h3>
+                        <div id="fundStatusOverview"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
