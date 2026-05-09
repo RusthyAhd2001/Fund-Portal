@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     updateStatistics();
     renderBeneficiariesTable();
-    initializeCharts();
 });
 
 // ==================== EVENT LISTENERS ====================
@@ -53,13 +52,6 @@ function switchTab(tabName) {
 
     // Add active class to clicked button
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-
-    // Update charts if analytics tab is opened
-    if (tabName === 'analytics') {
-        setTimeout(() => {
-            updateCharts();
-        }, 100);
-    }
 }
 
 // ==================== DUPLICATE DETECTION ====================
@@ -444,6 +436,13 @@ function resetUpload() {
 
 function downloadTemplate() {
     try {
+        // Check if XLSX library is available
+        if (typeof XLSX === 'undefined') {
+            showAlert('error', 'Excel library not loaded. Please refresh the page and try again.');
+            return;
+        }
+
+        // Create template data with example and empty rows
         const templateData = [
             {
                 'Full Name': 'Example Name',
@@ -462,8 +461,12 @@ function downloadTemplate() {
                 'Emergency Phone': '+94-XXXXXXXXX',
                 'Category': 'Education',
                 'Fund Amount': '50000'
-            },
-            {
+            }
+        ];
+
+        // Add 9 empty rows for data entry
+        for (let i = 0; i < 9; i++) {
+            templateData.push({
                 'Full Name': '',
                 'NIC/ID': '',
                 'Mobile Number': '',
@@ -480,43 +483,79 @@ function downloadTemplate() {
                 'Emergency Phone': '',
                 'Category': '',
                 'Fund Amount': ''
-            }
-        ];
+            });
+        }
 
-        const worksheet = XLSX.utils.json_to_sheet(templateData, { header: 1 });
+        // Create a new workbook
         const workbook = XLSX.utils.book_new();
         
-        // Properly create the sheet
-        const wsHeaders = Object.keys(templateData[0]);
-        const wsData = [wsHeaders, ...templateData.map(row => wsHeaders.map(key => row[key]))];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        // Create worksheet from data
+        const worksheet = XLSX.utils.json_to_sheet(templateData);
         
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 20 },
-            { wch: 15 },
-            { wch: 18 },
-            { wch: 15 },
-            { wch: 25 },
-            { wch: 20 },
-            { wch: 15 },
-            { wch: 15 },
-            { wch: 18 },
-            { wch: 20 },
-            { wch: 15 },
-            { wch: 12 },
-            { wch: 20 },
-            { wch: 15 },
-            { wch: 15 },
-            { wch: 12 }
+        // Set column widths for better readability
+        worksheet['!cols'] = [
+            { wch: 20 }, // Full Name
+            { wch: 15 }, // NIC/ID
+            { wch: 18 }, // Mobile Number
+            { wch: 15 }, // Date of Birth
+            { wch: 25 }, // Address
+            { wch: 20 }, // Grama Niladhari
+            { wch: 15 }, // District
+            { wch: 15 }, // Bank Name
+            { wch: 18 }, // Account Number
+            { wch: 20 }, // Account Holder
+            { wch: 15 }, // Family Members
+            { wch: 12 }, // Dependents
+            { wch: 20 }, // Emergency Contact
+            { wch: 18 }, // Emergency Phone
+            { wch: 15 }, // Category
+            { wch: 12 }  // Fund Amount
         ];
-        
-        XLSX.utils.book_append_sheet(workbook, ws, 'Beneficiaries');
-        XLSX.writeFile(workbook, 'NGO_Beneficiaries_Template.xlsx');
-        showAlert('success', 'Template downloaded successfully!');
+
+        // Set header row styling - make first row bold with background
+        const headerRow = worksheet['!rows'] = [{ hpx: 25 }];
+
+        // Add instructions sheet
+        const instructionsData = [
+            ['NGO Beneficiary Registration - Template Instructions'],
+            [''],
+            ['Column Descriptions:'],
+            ['Full Name', 'Enter the beneficiary\'s full name'],
+            ['NIC/ID', 'National ID or Identification number'],
+            ['Mobile Number', 'Format: +94-XXXXXXXXX'],
+            ['Date of Birth', 'Format: YYYY-MM-DD (e.g., 1990-01-15)'],
+            ['Address', 'Complete residential address'],
+            ['Grama Niladhari', 'Grama Niladhari Division name'],
+            ['District', 'District name'],
+            ['Bank Name', 'Name of the bank (optional)'],
+            ['Account Number', 'Bank account number (optional)'],
+            ['Account Holder', 'Account holder name (optional)'],
+            ['Family Members', 'Number of family members'],
+            ['Dependents', 'Number of dependents'],
+            ['Emergency Contact', 'Emergency contact person name'],
+            ['Emergency Phone', 'Emergency contact phone number'],
+            ['Category', 'Benefit category: Education, Medical, Food, Housing, Orphan, Widow, Emergency'],
+            ['Fund Amount', 'Amount requested (in ₨)'],
+            [''],
+            ['Categories:', ''],
+            ['', 'Education, Medical, Food, Housing, Orphan, Widow, Emergency']
+        ];
+
+        const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData);
+        instructionsSheet['!cols'] = [{ wch: 30 }, { wch: 50 }];
+
+        // Add sheets to workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Entry');
+        XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
+
+        // Write the file
+        const fileName = `NGO_Beneficiaries_Template_${new Date().getTime()}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+
+        showAlert('success', '✓ Template downloaded successfully! Please fill in the data and upload it.');
     } catch (error) {
         console.error('Download error:', error);
-        showAlert('error', 'Error downloading template. Please try again.');
+        showAlert('error', 'Failed to download template. Please ensure you have a stable internet connection and try again.');
     }
 }
 
@@ -611,149 +650,193 @@ function viewDetails(id) {
     const modal = document.getElementById('detailModal');
     const modalBody = document.getElementById('modalBody');
 
-    // Determine available action buttons
-    let actionButtons = `
-        <button class="btn btn-info" onclick="editBeneficiary('${beneficiary.id}', 'Approved')">✓ Approve</button>
-        <button class="btn btn-danger" onclick="editBeneficiary('${beneficiary.id}', 'Rejected')">✕ Reject</button>
-    `;
-
-    if (beneficiary.status === 'Approved') {
-        actionButtons = `
-            <button class="btn btn-success" onclick="editBeneficiary('${beneficiary.id}', 'Funded')">💰 Mark as Funded</button>
-            <button class="btn btn-warning" onclick="editBeneficiary('${beneficiary.id}', 'Pending')">↩ Back to Pending</button>
-            <button class="btn btn-danger" onclick="editBeneficiary('${beneficiary.id}', 'Rejected')">✕ Reject</button>
-        `;
-    } else if (beneficiary.status === 'Funded') {
-        actionButtons = `
-            <button class="btn btn-secondary" disabled>✓ Already Funded</button>
-        `;
-    } else if (beneficiary.status === 'Rejected') {
-        actionButtons = `
-            <button class="btn btn-info" onclick="editBeneficiary('${beneficiary.id}', 'Pending')">↩ Back to Pending</button>
-        `;
-    }
-
-    modalBody.innerHTML = `
-        <div style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <div>
-                    <h3 style="margin: 0; color: var(--primary-color);">${beneficiary.fullName}</h3>
-                    <p style="margin: 5px 0; color: var(--text-secondary); font-size: 13px;">ID: ${beneficiary.id}</p>
-                </div>
+    // Create editable form
+    let editForm = `
+        <div style="max-height: 70vh; overflow-y: auto;">
+            <h2 style="margin-top: 0; color: var(--primary-color); display: flex; justify-content: space-between; align-items: center;">
+                <span>👤 Beneficiary Details - ${beneficiary.id}</span>
                 <span class="status-badge status-${beneficiary.status.toLowerCase()}">${beneficiary.status}</span>
-            </div>
+            </h2>
             
-            <div style="background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); padding: 20px; border-radius: 8px; margin: 15px 0;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <p style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">NIC / ID</p>
-                        <p style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">${beneficiary.nicNumber}</p>
+            <form id="editForm_${id}" style="display: grid; gap: 20px;">
+                <!-- Personal Information -->
+                <fieldset class="form-fieldset" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                    <legend style="padding: 0 10px; font-weight: 600;">📋 Personal Information</legend>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Full Name</label>
+                            <input type="text" value="${beneficiary.fullName}" id="edit_fullName_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">NIC Number</label>
+                            <input type="text" value="${beneficiary.nicNumber}" id="edit_nicNumber_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Mobile Number</label>
+                            <input type="tel" value="${beneficiary.mobileNumber}" id="edit_mobileNumber_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Date of Birth</label>
+                            <input type="date" value="${beneficiary.dateOfBirth}" id="edit_dateOfBirth_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                        </div>
                     </div>
-                    <div>
-                        <p style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Mobile</p>
-                        <p style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">${beneficiary.mobileNumber}</p>
-                    </div>
-                    <div>
-                        <p style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Date of Birth</p>
-                        <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.dateOfBirth}</p>
-                    </div>
-                    <div>
-                        <p style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Registration Date</p>
-                        <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.dateRegistered}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                </fieldset>
 
-        <div style="border-top: 2px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
-            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">📍 Address Information</h4>
-            <div style="display: grid; gap: 12px;">
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Full Address</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.address}</p>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">District</p>
-                        <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.district}</p>
+                <!-- Address Information -->
+                <fieldset class="form-fieldset" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                    <legend style="padding: 0 10px; font-weight: 600;">📍 Address Information</legend>
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Full Address</label>
+                            <textarea id="edit_address_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; font-family: inherit;" rows="3" required>${beneficiary.address}</textarea>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">District</label>
+                                <input type="text" value="${beneficiary.district}" id="edit_district_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Grama Niladhari</label>
+                                <input type="text" value="${beneficiary.gramaNeladhari}" id="edit_gramaNeladhari_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Grama Niladhari</p>
-                        <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.gramaNeladhari}</p>
+                </fieldset>
+
+                <!-- Fund Information -->
+                <fieldset class="form-fieldset" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                    <legend style="padding: 0 10px; font-weight: 600;">💰 Fund Information</legend>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Category</label>
+                            <select id="edit_category_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                                ${CATEGORIES.map(cat => `<option value="${cat}" ${beneficiary.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Fund Amount (₨)</label>
+                            <input type="number" value="${beneficiary.fundAmount}" id="edit_fundAmount_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" required>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Family Members</label>
+                            <input type="number" value="${beneficiary.familyMembers || 0}" id="edit_familyMembers_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" min="1">
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Dependents</label>
+                            <input type="number" value="${beneficiary.dependents || 0}" id="edit_dependents_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;" min="0">
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
+                </fieldset>
 
-        <div style="border-top: 2px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
-            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">📞 Contact Information</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Emergency Contact</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.emergencyContact}</p>
-                </div>
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Emergency Phone</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.emergencyPhone}</p>
-                </div>
-            </div>
-        </div>
+                <!-- Contact Information -->
+                <fieldset class="form-fieldset" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                    <legend style="padding: 0 10px; font-weight: 600;">📞 Contact Information</legend>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Emergency Contact</label>
+                            <input type="text" value="${beneficiary.emergencyContact || ''}" id="edit_emergencyContact_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Emergency Phone</label>
+                            <input type="tel" value="${beneficiary.emergencyPhone || ''}" id="edit_emergencyPhone_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        </div>
+                    </div>
+                </fieldset>
 
-        <div style="border-top: 2px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
-            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">💰 Fund Information</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid var(--info-color);">
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Category</p>
-                    <p style="margin: 0; font-size: 16px; font-weight: 700; color: var(--primary-color);">${beneficiary.category}</p>
-                </div>
-                <div style="background: #dcfce7; padding: 15px; border-radius: 8px; border-left: 4px solid var(--success-color);">
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Amount Requested</p>
-                    <p style="margin: 0; font-size: 16px; font-weight: 700; color: var(--success-color);">₨${beneficiary.fundAmount.toLocaleString()}</p>
-                </div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Family Members</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.familyMembers}</p>
-                </div>
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Dependents</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.dependents}</p>
-                </div>
-            </div>
-        </div>
+                <!-- Bank Information -->
+                <fieldset class="form-fieldset" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                    <legend style="padding: 0 10px; font-weight: 600;">🏦 Bank Details</legend>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Bank Name</label>
+                            <input type="text" value="${beneficiary.bankName || ''}" id="edit_bankName_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Account Number</label>
+                            <input type="text" value="${beneficiary.accountNumber || ''}" id="edit_accountNumber_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Account Holder Name</label>
+                            <input type="text" value="${beneficiary.accountHolder || ''}" id="edit_accountHolder_${id}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        </div>
+                    </div>
+                </fieldset>
 
-        ${beneficiary.bankName ? `
-        <div style="border-top: 2px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
-            <h4 style="margin: 0 0 15px 0; font-size: 15px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">🏦 Bank Details</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Bank Name</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.bankName}</p>
-                </div>
-                <div>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Account Number</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.accountNumber}</p>
-                </div>
-                <div style="grid-column: 1 / -1;">
-                    <p style="margin: 0 0 5px 0; font-size: 12px; color: var(--text-secondary); font-weight: 600;">Account Holder</p>
-                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">${beneficiary.accountHolder}</p>
-                </div>
-            </div>
-        </div>
-        ` : ''}
+                <!-- Status Selection -->
+                <fieldset class="form-fieldset" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                    <legend style="padding: 0 10px; font-weight: 600;">⚙️ Status</legend>
+                    <select id="edit_status_${id}" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; font-weight: 600;" required>
+                        ${STATUSES.map(status => `<option value="${status}" ${beneficiary.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+                    </select>
+                </fieldset>
 
-        <div style="display: flex; gap: 10px; margin-top: 30px; padding-top: 20px; border-top: 2px solid var(--border-color); flex-wrap: wrap;">
-            ${actionButtons}
-            <button class="btn btn-danger" onclick="deleteBeneficiary('${beneficiary.id}')">🗑️ Delete</button>
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px; padding-top: 20px; border-top: 2px solid var(--border-color); flex-wrap: wrap; justify-content: space-between;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-success" onclick="saveEditedBeneficiary('${id}')">💾 Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">❌ Cancel</button>
+                    </div>
+                    <button type="button" class="btn btn-danger" onclick="deleteBeneficiary('${id}')">🗑️ Delete</button>
+                </div>
+            </form>
         </div>
     `;
 
+    modalBody.innerHTML = editForm;
     modal.classList.remove('hidden');
 }
 
 function closeModal() {
     document.getElementById('detailModal').classList.add('hidden');
+}
+
+function saveEditedBeneficiary(id) {
+    const beneficiary = beneficiaries.find(b => b.id === id);
+    if (!beneficiary) return;
+
+    // Get all edited values from form inputs
+    const updatedData = {
+        fullName: document.getElementById(`edit_fullName_${id}`).value,
+        nicNumber: document.getElementById(`edit_nicNumber_${id}`).value,
+        mobileNumber: document.getElementById(`edit_mobileNumber_${id}`).value,
+        dateOfBirth: document.getElementById(`edit_dateOfBirth_${id}`).value,
+        address: document.getElementById(`edit_address_${id}`).value,
+        district: document.getElementById(`edit_district_${id}`).value,
+        gramaNeladhari: document.getElementById(`edit_gramaNeladhari_${id}`).value,
+        category: document.getElementById(`edit_category_${id}`).value,
+        fundAmount: parseFloat(document.getElementById(`edit_fundAmount_${id}`).value),
+        familyMembers: parseInt(document.getElementById(`edit_familyMembers_${id}`).value) || 0,
+        dependents: parseInt(document.getElementById(`edit_dependents_${id}`).value) || 0,
+        emergencyContact: document.getElementById(`edit_emergencyContact_${id}`).value,
+        emergencyPhone: document.getElementById(`edit_emergencyPhone_${id}`).value,
+        bankName: document.getElementById(`edit_bankName_${id}`).value,
+        accountNumber: document.getElementById(`edit_accountNumber_${id}`).value,
+        accountHolder: document.getElementById(`edit_accountHolder_${id}`).value,
+        status: document.getElementById(`edit_status_${id}`).value
+    };
+
+    // Validate required fields
+    if (!updatedData.fullName || !updatedData.nicNumber || !updatedData.mobileNumber || 
+        !updatedData.dateOfBirth || !updatedData.address || !updatedData.district || 
+        !updatedData.gramaNeladhari || !updatedData.category || !updatedData.fundAmount) {
+        showAlert('danger', 'Please fill all required fields!');
+        return;
+    }
+
+    // Update the beneficiary object
+    Object.assign(beneficiary, updatedData);
+    
+    // Save to local storage
+    saveBeneficiariesToLocalStorage();
+    
+    // Update tables and close modal
+    updateStatistics();
+    renderBeneficiariesTable();
+    filterBeneficiaries();
+    closeModal();
+    
+    // Show success message
+    showAlert('success', `✓ Beneficiary "${updatedData.fullName}" updated successfully!`);
 }
 
 function editBeneficiary(id, directStatus = null) {
@@ -831,22 +914,6 @@ function updateStatistics() {
     document.getElementById('totalBeneficiaries').textContent = total;
     document.getElementById('totalFunded').textContent = funded;
     document.getElementById('totalDuplicates').textContent = duplicates;
-
-    // Analytics stats
-    const pending = beneficiaries.filter(b => b.status === 'Pending').length;
-    const approved = beneficiaries.filter(b => b.status === 'Approved').length;
-    const rejected = beneficiaries.filter(b => b.status === 'Rejected').length;
-    const totalFunds = beneficiaries.filter(b => b.status === 'Funded').reduce((sum, b) => sum + b.fundAmount, 0);
-    const pendingFunds = beneficiaries.filter(b => b.status === 'Approved').reduce((sum, b) => sum + b.fundAmount, 0);
-
-    document.getElementById('analyticsTotal').textContent = total;
-    document.getElementById('analyticsPending').textContent = pending;
-    document.getElementById('analyticsApproved').textContent = approved;
-    document.getElementById('analyticsFunded').textContent = funded;
-    document.getElementById('analyticsRejected').textContent = rejected;
-    document.getElementById('analyticsDuplicate').textContent = duplicates;
-    document.getElementById('analyticsTotalFunds').textContent = '₨' + totalFunds.toLocaleString();
-    document.getElementById('analyticsPendingFunds').textContent = '₨' + pendingFunds.toLocaleString();
 }
 
 function calculateDuplicates() {
@@ -871,260 +938,6 @@ function calculateDuplicates() {
     return count;
 }
 
-// ==================== CHARTS ====================
-let categoryChart = null;
-let statusChart = null;
-
-function initializeCharts() {
-    const categoryCtx = document.getElementById('categoryChart');
-    const statusCtx = document.getElementById('statusChart');
-
-    if (!categoryCtx || !statusCtx) return;
-
-    // Category Chart
-    categoryChart = new Chart(categoryCtx, {
-        type: 'doughnut',
-        data: {
-            labels: CATEGORIES,
-            datasets: [{
-                data: CATEGORIES.map(cat => beneficiaries.filter(b => b.category === cat).length),
-                backgroundColor: [
-                    '#1e40af',
-                    '#3b82f6',
-                    '#0f172a',
-                    '#22c55e',
-                    '#f59e0b',
-                    '#ef4444',
-                    '#8b5cf6'
-                ],
-                borderColor: '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        font: { size: 13 },
-                        padding: 15
-                    }
-                }
-            }
-        }
-    });
-
-    // Status Chart
-    statusChart = new Chart(statusCtx, {
-        type: 'bar',
-        data: {
-            labels: STATUSES,
-            datasets: [{
-                label: 'Count',
-                data: STATUSES.map(status => beneficiaries.filter(b => b.status === status).length),
-                backgroundColor: [
-                    '#fef3c7',
-                    '#dbeafe',
-                    '#dcfce7',
-                    '#fee2e2'
-                ],
-                borderColor: [
-                    '#f59e0b',
-                    '#3b82f6',
-                    '#22c55e',
-                    '#ef4444'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
-}
-
-function updateCharts() {
-    if (categoryChart) {
-        categoryChart.data.datasets[0].data = CATEGORIES.map(cat => beneficiaries.filter(b => b.category === cat).length);
-        categoryChart.update();
-    }
-
-    if (statusChart) {
-        statusChart.data.datasets[0].data = STATUSES.map(status => beneficiaries.filter(b => b.status === status).length);
-        statusChart.update();
-    }
-
-    // Update detailed analytics
-    updateDetailedAnalytics();
-}
-
-function updateDetailedAnalytics() {
-    // Category breakdown
-    const categoryBreakdown = {};
-    CATEGORIES.forEach(cat => {
-        const bensByCategory = beneficiaries.filter(b => b.category === cat);
-        categoryBreakdown[cat] = {
-            count: bensByCategory.length,
-            amount: bensByCategory.reduce((sum, b) => sum + b.fundAmount, 0),
-            funded: bensByCategory.filter(b => b.status === 'Funded').length,
-            pending: bensByCategory.filter(b => b.status === 'Pending').length,
-            approved: bensByCategory.filter(b => b.status === 'Approved').length,
-            rejected: bensByCategory.filter(b => b.status === 'Rejected').length
-        };
-    });
-
-    // Update category details in analytics
-    const analyticsContainer = document.querySelector('.analytics-section');
-    if (analyticsContainer) {
-        updateAnalyticsDisplay(categoryBreakdown);
-    }
-}
-
-function updateDetailedAnalytics() {
-    // Category breakdown
-    const categoryBreakdown = {};
-    CATEGORIES.forEach(cat => {
-        const bensByCategory = beneficiaries.filter(b => b.category === cat);
-        categoryBreakdown[cat] = {
-            count: bensByCategory.length,
-            amount: bensByCategory.reduce((sum, b) => sum + b.fundAmount, 0),
-            funded: bensByCategory.filter(b => b.status === 'Funded').length,
-            pending: bensByCategory.filter(b => b.status === 'Pending').length,
-            approved: bensByCategory.filter(b => b.status === 'Approved').length,
-            rejected: bensByCategory.filter(b => b.status === 'Rejected').length
-        };
-    });
-
-    // Update category breakdown table
-    updateCategoryBreakdownTable(categoryBreakdown);
-
-    // Update top categories
-    updateTopCategories(categoryBreakdown);
-
-    // Update fund status overview
-    updateFundStatusOverview(categoryBreakdown);
-}
-
-function updateCategoryBreakdownTable(categoryBreakdown) {
-    const container = document.getElementById('categoryBreakdownTable');
-    if (!container) return;
-
-    let html = `
-        <table>
-            <thead>
-                <tr>
-                    <th>Category</th>
-                    <th>Total</th>
-                    <th>Pending</th>
-                    <th>Approved</th>
-                    <th>Funded</th>
-                    <th>Rejected</th>
-                    <th>Total Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    Object.entries(categoryBreakdown).forEach(([category, data]) => {
-        if (data.count > 0) {
-            html += `
-                <tr>
-                    <td><strong>${category}</strong></td>
-                    <td>${data.count}</td>
-                    <td><span style="background: #fef3c7; padding: 4px 8px; border-radius: 4px;">${data.pending}</span></td>
-                    <td><span style="background: #dbeafe; padding: 4px 8px; border-radius: 4px;">${data.approved}</span></td>
-                    <td><span style="background: #dcfce7; padding: 4px 8px; border-radius: 4px;">${data.funded}</span></td>
-                    <td><span style="background: #fee2e2; padding: 4px 8px; border-radius: 4px;">${data.rejected}</span></td>
-                    <td><strong>₨${data.amount.toLocaleString()}</strong></td>
-                </tr>
-            `;
-        }
-    });
-
-    html += `
-            </tbody>
-        </table>
-    `;
-
-    container.innerHTML = html;
-}
-
-function updateTopCategories(categoryBreakdown) {
-    const container = document.getElementById('topCategories');
-    if (!container) return;
-
-    const sorted = Object.entries(categoryBreakdown)
-        .filter(([cat, data]) => data.count > 0)
-        .sort((a, b) => b[1].count - a[1].count);
-
-    let html = '';
-    sorted.forEach(([category, data]) => {
-        const percentage = beneficiaries.length > 0 ? ((data.count / beneficiaries.length) * 100).toFixed(1) : 0;
-        html += `
-            <div class="category-item">
-                <span class="category-name">${category}</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 12px; color: var(--text-secondary);">${percentage}%</span>
-                    <span class="category-count">${data.count}</span>
-                </div>
-            </div>
-        `;
-    });
-
-    container.innerHTML = html || '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No data available</p>';
-}
-
-function updateFundStatusOverview(categoryBreakdown) {
-    const container = document.getElementById('fundStatusOverview');
-    if (!container) return;
-
-    const statusData = {
-        'Pending': beneficiaries.filter(b => b.status === 'Pending').length,
-        'Approved': beneficiaries.filter(b => b.status === 'Approved').length,
-        'Funded': beneficiaries.filter(b => b.status === 'Funded').length,
-        'Rejected': beneficiaries.filter(b => b.status === 'Rejected').length
-    };
-
-    let html = '';
-    Object.entries(statusData).forEach(([status, count]) => {
-        const colors = {
-            'Pending': '#f59e0b',
-            'Approved': '#3b82f6',
-            'Funded': '#22c55e',
-            'Rejected': '#ef4444'
-        };
-        const bgColors = {
-            'Pending': '#fef3c7',
-            'Approved': '#dbeafe',
-            'Funded': '#dcfce7',
-            'Rejected': '#fee2e2'
-        };
-        
-        html += `
-            <div class="fund-status-item" style="border-left-color: ${colors[status]}; background: ${bgColors[status]};">
-                <span class="status-name">${status}</span>
-                <span class="status-count" style="background: ${colors[status]}">${count}</span>
-            </div>
-        `;
-    });
-
-    container.innerHTML = html;
-}
-
 // ==================== LOCAL STORAGE ====================
 function saveBeneficiariesToLocalStorage() {
     localStorage.setItem('beneficiaries', JSON.stringify(beneficiaries));
@@ -1139,20 +952,117 @@ function loadBeneficiariesFromLocalStorage() {
 
 // ==================== ALERTS ====================
 function showAlert(type, message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type}`;
-    alertDiv.innerHTML = `
-        <p>${message}</p>
-        <button class="btn btn-sm" onclick="this.parentElement.remove()">Dismiss</button>
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    const icons = {
+        'success': '✓',
+        'danger': '✕',
+        'warning': '⚠',
+        'info': 'ℹ',
+        'error': '✕'
+    };
+    const colors = {
+        'success': '#10b981',
+        'danger': '#ef4444',
+        'warning': '#f59e0b',
+        'info': '#3b82f6',
+        'error': '#ef4444'
+    };
+    
+    const bgColors = {
+        'success': '#ecfdf5',
+        'danger': '#fef2f2',
+        'warning': '#fffbeb',
+        'info': '#eff6ff',
+        'error': '#fef2f2'
+    };
+
+    const toastType = type === 'error' ? 'danger' : type;
+    const color = colors[toastType] || colors['info'];
+    const bgColor = bgColors[toastType] || bgColors['info'];
+    const icon = icons[toastType] || icons['info'];
+
+    toast.style.cssText = `
+        background: white;
+        border-left: 5px solid ${color};
+        border-radius: 8px;
+        padding: 16px 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 300px;
+        max-width: 450px;
+        animation: slideInRight 0.3s ease;
+        pointer-events: auto;
     `;
 
-    const container = document.querySelector('.main-content');
-    container.insertBefore(alertDiv, container.firstChild);
+    const iconSpan = document.createElement('span');
+    iconSpan.style.cssText = `
+        font-size: 24px;
+        color: ${color};
+        font-weight: bold;
+        flex-shrink: 0;
+    `;
+    iconSpan.textContent = icon;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    `;
+    content.innerHTML = `
+        <p style="margin: 0; font-weight: 600; color: #1f2937; font-size: 14px;">${toastType.charAt(0).toUpperCase() + toastType.slice(1)}</p>
+        <p style="margin: 0; color: #6b7280; font-size: 13px;">${message}</p>
+    `;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #9ca3af;
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s;
+    `;
+    closeBtn.textContent = '×';
+    closeBtn.onmouseover = () => closeBtn.style.color = '#6b7280';
+    closeBtn.onmouseout = () => closeBtn.style.color = '#9ca3af';
+    closeBtn.onclick = () => {
+        toast.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    toast.appendChild(iconSpan);
+    toast.appendChild(content);
+    toast.appendChild(closeBtn);
+    toastContainer.appendChild(toast);
 
     // Auto dismiss after 5 seconds
     setTimeout(() => {
-        if (alertDiv.parentElement) {
-            alertDiv.remove();
+        if (toast.parentElement) {
+            toast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentElement) toast.remove();
+            }, 300);
         }
     }, 5000);
 }

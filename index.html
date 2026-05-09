@@ -38,7 +38,6 @@
             <button class="tab-btn active" data-tab="register">Register Beneficiary</button>
             <button class="tab-btn" data-tab="bulk-upload">Bulk Upload</button>
             <button class="tab-btn" data-tab="beneficiaries">All Beneficiaries</button>
-            <button class="tab-btn" data-tab="analytics">Analytics</button>
         </div>
 
         <!-- Tab 1: Register Beneficiary -->
@@ -320,83 +319,7 @@
             </div>
         </div>
 
-        <!-- Tab 4: Analytics -->
-        <div id="analytics" class="tab-content">
-            <div class="analytics-section">
-                <h2>Portal Analytics</h2>
-                
-                <div class="analytics-grid">
-                    <!-- Category Distribution -->
-                    <div class="analytics-card">
-                        <h3>Beneficiaries by Category</h3>
-                        <canvas id="categoryChart"></canvas>
-                    </div>
 
-                    <!-- Status Distribution -->
-                    <div class="analytics-card">
-                        <h3>Status Distribution</h3>
-                        <canvas id="statusChart"></canvas>
-                    </div>
-
-                    <!-- Summary Stats -->
-                    <div class="analytics-card full-width">
-                        <h3>Summary Statistics</h3>
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsTotal">0</span>
-                                <span class="stat-name">Total Beneficiaries</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsPending">0</span>
-                                <span class="stat-name">Pending Verification</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsApproved">0</span>
-                                <span class="stat-name">Approved</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsFunded">0</span>
-                                <span class="stat-name">Funded</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsRejected">0</span>
-                                <span class="stat-name">Rejected</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsDuplicate">0</span>
-                                <span class="stat-name">Duplicates Blocked</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsTotalFunds">₨0</span>
-                                <span class="stat-name">Total Funds Distributed</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value" id="analyticsPendingFunds">₨0</span>
-                                <span class="stat-name">Pending Funds</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Category Details Breakdown -->
-                    <div class="analytics-card full-width">
-                        <h3>Category-wise Breakdown</h3>
-                        <div id="categoryBreakdownTable" class="category-breakdown-table"></div>
-                    </div>
-
-                    <!-- Top Requested Categories -->
-                    <div class="analytics-card">
-                        <h3>Most Requested Categories</h3>
-                        <div id="topCategories"></div>
-                    </div>
-
-                    <!-- Fund Status Breakdown -->
-                    <div class="analytics-card">
-                        <h3>Fund Status Overview</h3>
-                        <div id="fundStatusOverview"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Detail Modal -->

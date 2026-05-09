@@ -366,6 +366,28 @@ body {
     color: #1e40af;
 }
 
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
 .hidden {
     display: none !important;
 }
@@ -614,74 +636,6 @@ body {
     font-size: 16px;
 }
 
-/* ========================= ANALYTICS ========================= */
-.analytics-section {
-    background: white;
-    border-radius: 12px;
-    padding: 30px;
-    box-shadow: var(--shadow-md);
-}
-
-.analytics-section h2 {
-    font-size: 24px;
-    margin-bottom: 25px;
-}
-
-.analytics-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 25px;
-}
-
-.analytics-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: var(--shadow);
-}
-
-.analytics-card h3 {
-    font-size: 16px;
-    margin-bottom: 20px;
-    color: var(--text-primary);
-}
-
-.analytics-card.full-width {
-    grid-column: 1 / -1;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-}
-
-.stat-item {
-    background: var(--light-bg);
-    padding: 20px;
-    border-radius: 8px;
-    text-align: center;
-    border-left: 4px solid var(--primary-color);
-}
-
-.stat-item .stat-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 5px;
-    color: var(--primary-color);
-}
-
-.stat-item .stat-name {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 /* ========================= MODAL ========================= */
 .modal {
     display: none;
@@ -701,11 +655,13 @@ body {
 
 .modal-content {
     background-color: white;
-    margin: 5% auto;
+    margin: 2% auto;
     padding: 30px;
     border-radius: 12px;
     width: 90%;
-    max-width: 600px;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: var(--shadow-lg);
     animation: slideIn 0.3s ease;
 }
@@ -753,10 +709,6 @@ body {
 /* ========================= RESPONSIVE ========================= */
 @media (max-width: 1024px) {
     .form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .analytics-grid {
         grid-template-columns: 1fr;
     }
 
@@ -915,71 +867,4 @@ body {
 
 .results-table-container tr:hover {
     background: var(--light-bg);
-}
-
-/* ========================= CATEGORY BREAKDOWN TABLE ========================= */
-.category-breakdown-table {
-    overflow-x: auto;
-    max-height: 400px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-}
-
-.category-breakdown-table table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.category-breakdown-table th {
-    background: var(--primary-color);
-    color: white;
-    padding: 12px;
-    text-align: left;
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-}
-
-.category-breakdown-table td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.category-breakdown-table tbody tr:hover {
-    background: var(--light-bg);
-}
-
-#topCategories,
-#fundStatusOverview {
-    display: grid;
-    gap: 12px;
-}
-
-.category-item,
-.fund-status-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: var(--light-bg);
-    border-radius: 6px;
-    border-left: 4px solid var(--primary-color);
-}
-
-.category-item .category-name,
-.fund-status-item .status-name {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.category-item .category-count,
-.fund-status-item .status-count {
-    background: var(--primary-color);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 12px;
 }
